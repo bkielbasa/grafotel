@@ -1,0 +1,95 @@
+groups:
+  - name: adtech-service-alerts
+    rules:
+      # Service Down Alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.exported_job }} is down"
+          description: "Service {{ $labels.exported_job }} has been down for more than 1 minute."
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate for {{ $labels.exported_job }}"
+          description: "Error rate is {{ $value }} errors per second for {{ $labels.exported_job }}"
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time for {{ $labels.exported_job }}"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.exported_job }}"
+
+      # Low Success Rate
+      - alert: LowSuccessRate
+        expr: rate(http_requests_total{status=~"2.."}[5m]) / rate(http_requests_total[5m]) < 0.95
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low success rate for {{ $labels.exported_job }}"
+          description: "Success rate is {{ $value | humanizePercentage }} for {{ $labels.exported_job }}"
+
+  - name: bidding-service-alerts
+    rules:
+      # Bidding Service Specific Alerts
+      - alert: BiddingServiceHighLatency
+        expr: histogram_quantile(0.95, rate(bidding_request_duration_seconds_bucket[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High bidding latency"
+          description: "95th percentile bidding latency is {{ $value }}s"
+
+      - alert: BiddingServiceLowSuccessRate
+        expr: rate(bidding_success_total[5m]) / rate(bidding_requests_total[5m]) < 0.6
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low bidding success rate"
+          description: "Bidding success rate is {{ $value | humanizePercentage }}"
+
+  - name: infrastructure-alerts
+    rules:
+      # Memory Usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # Disk Usage
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value | humanizePercentage }}"
+
+      # CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%" 

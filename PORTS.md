@@ -12,6 +12,7 @@ This document outlines all port assignments for the Ad-Tech Microservices Traini
 | Tempo OTLP HTTP | 4328 | Trace ingestion (HTTP) | 4318 |
 | Loki | 3100 | Log aggregation | 3100 |
 | Prometheus | 9090 | Metrics collection | 9090 |
+| Alertmanager | 9093 | Alert management | 9093 |
 | OpenTelemetry Collector gRPC | 4317 | Telemetry ingestion (gRPC) | 4317 |
 | OpenTelemetry Collector HTTP | 4318 | Telemetry ingestion (HTTP) | 4318 |
 | PostgreSQL | 5444 | Database | 5432 |
@@ -29,7 +30,7 @@ This document outlines all port assignments for the Ad-Tech Microservices Traini
 
 ```
 Services → OpenTelemetry Collector (4317/4318) → Tempo (4327/4328) → Grafana
-Services → Prometheus (9090) → Grafana
+Services → Prometheus (9090) → Alertmanager (9093) → Grafana
 Services → Loki (3100) → Grafana
 ```
 
