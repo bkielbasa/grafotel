@@ -1,0 +1,212 @@
+services:
+  # Tempo for distributed tracing
+  tempo:
+    image: grafana/tempo:latest
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./monitoring/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # tempo
+      - "4327:4317"   # otlp grpc
+      - "4328:4318"   # otlp http
+    networks:
+      - monitoring
+
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    networks:
+      - monitoring
+
+  # Prometheus (replaced by Mimir for better scalability)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - monitoring
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "9464:9464"   # Prometheus metrics
+    volumes:
+      - ./monitoring/otel-collector-config.yml:/etc/otelcol/config.yml
+    command: ["--config", "/etc/otelcol/config.yml"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9464/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - monitoring
+
+  # Promtail for log collection
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  # Redis for caching (used by services)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - monitoring
+
+  # PostgreSQL for analytics service
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: adtech_analytics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5444:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  # Ad Service (Go)
+  ad-service:
+    build:
+      context: ./ad-service
+      dockerfile: Dockerfile
+    ports:
+      - "8180:8080"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - OTEL_LOGS_EXPORTER=otlp
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3000
+      - BIDDING_SERVICE_URL=http://bidding-service:3001
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.Name}}"
+    networks:
+      - monitoring
+
+  # Analytics Service (Rails)
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./analytics-service:/rails
+      - /rails/tmp
+      - /rails/log
+    environment:
+      - RAILS_ENV=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=password
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_LOG_LEVEL=DEBUG
+      - OTEL_TRACES_SAMPLER=always_on
+      - OTEL_TRACES_SAMPLER_ARG=1.0
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=otlp
+      - AD_SERVICE_URL=http://ad-service:8080
+      - BINDING=0.0.0.0
+      - PORT=3000
+      - RAILS_SERVE_STATIC_FILES=true
+      - RAILS_LOG_TO_STDOUT=true
+    command: ["./bin/rails", "server", "-b", "0.0.0.0", "-p", "3000", "--dev-caching"]
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.Name}}"
+    networks:
+      - monitoring
+
+  # Bidding Service (Python)
+  bidding-service:
+    build:
+      context: ./bidding-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
+      - OTEL_SERVICE_NAME=bidding-service
+      - OTEL_LOGS_EXPORTER=otlp
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.Name}}"
+    networks:
+      - monitoring
+
+volumes:
+  grafana-storage:
+  postgres-data:
+  tempo-data:
+  loki-data:
+
+networks:
+  monitoring:
+    driver: bridge 
