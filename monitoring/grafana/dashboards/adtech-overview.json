@@ -1,5 +1,4 @@
 {
-  "dashboard": {
     "id": null,
     "title": "Ad-Tech Microservices Overview",
     "tags": ["ad-tech", "microservices", "opentelemetry"],
@@ -156,5 +155,4 @@
       "to": "now"
     },
     "refresh": "5s"
-  }
 } 
