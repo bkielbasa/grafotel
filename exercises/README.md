@@ -14,8 +14,9 @@ By completing these exercises, you will learn:
 4. **Distributed Tracing** - Using Tempo for request flow analysis
 5. **Log Aggregation** - Using Loki for centralized logging
 6. **Visualization** - Using Grafana for dashboards and exploration
-7. **Alerting** - Using Alertmanager for monitoring and notifications
-8. **Integration** - Connecting all components into a cohesive stack
+8. **Dashboard Management** - Loading and customizing existing dashboards
+9. **Alerting** - Using Alertmanager for monitoring and notifications
+10. **Integration** - Connecting all components into a cohesive stack
 
 ## 📋 Prerequisites
 
@@ -62,6 +63,18 @@ By completing these exercises, you will learn:
 - `exercise.03.md` - Complete instructions
 - `test-grafana.sh` - Grafana testing script
 
+### Exercise 03a: Loading Existing Dashboards
+**Duration**: 30-45 minutes
+**Objective**: Load and customize existing dashboards
+- Import dashboards from Grafana library
+- Export dashboards as JSON configuration
+- Customize dashboards for adtech services
+- Set up dashboard provisioning
+
+**Files**:
+- `exercise.03a.md` - Complete instructions
+- `test-dashboards.sh` - Dashboard testing script
+
 ### Exercise 04: Adding Alertmanager and Alerting
 **Duration**: 30-45 minutes
 **Objective**: Add alerting and notification system
@@ -106,6 +119,18 @@ chmod +x test-services.sh
 chmod +x test-telemetry.sh
 ./test-telemetry.sh
 
+# Continue with Exercise 03
+# Follow exercise.03.md instructions
+# Run test script
+chmod +x test-grafana.sh
+./test-grafana.sh
+
+# Continue with Exercise 03a
+# Follow exercise.03a.md instructions
+# Run test script
+chmod +x test-dashboards.sh
+./test-dashboards.sh
+
 # Continue through all exercises...
 ```
 
@@ -149,6 +174,7 @@ chmod +x test-complete-stack.sh
                     ┌─────────────▼─────────────┐
                     │        Grafana           │
                     │   (Visualization UI)     │
+                    │  + Dashboard Library     │
                     └─────────────┬─────────────┘
                                   │
                     ┌─────────────▼─────────────┐
@@ -189,6 +215,25 @@ Once the complete stack is running:
 - Memory usage: `(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes`
 - CPU usage: `100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)`
 
+## 🎨 Popular Dashboard IDs
+
+### Infrastructure Dashboards
+- **Prometheus Overview**: 3662
+- **Node Exporter Full**: 1860
+- **Docker & System Monitoring**: 893
+- **Kubernetes Cluster**: 315
+
+### Application Dashboards
+- **Spring Boot 2.1+ Statistics**: 4701
+- **Python Application**: 12608
+- **Go Application**: 6671
+
+### Observability Dashboards
+- **Loki Overview**: 12019
+- **Logs Analysis**: 12020
+- **Tempo Service Graph**: 12021
+- **Tempo Search**: 12022
+
 ## 🔧 Troubleshooting
 
 ### Common Issues
@@ -213,7 +258,15 @@ Once the complete stack is running:
    curl http://localhost:3100/ready
    ```
 
-4. **Alerts not firing**
+4. **Dashboards not loading**
+   ```bash
+   # Check Grafana logs
+   docker compose logs grafana
+   # Verify dashboard provisioning
+   curl http://localhost:3002/api/health
+   ```
+
+5. **Alerts not firing**
    ```bash
    # Check alerting rules
    curl http://localhost:9090/api/v1/rules
@@ -236,21 +289,24 @@ The complete stack requires approximately:
 3. Complete Exercise 03 - Explore visualization
 
 ### Intermediate Level
-1. Complete Exercise 04 - Understand alerting
-2. Customize dashboards in Grafana
-3. Add custom metrics to services
+1. Complete Exercise 03a - Learn dashboard management
+2. Complete Exercise 04 - Understand alerting
+3. Customize dashboards in Grafana
+4. Add custom metrics to services
 
 ### Advanced Level
 1. Complete Exercise 05 - Full stack integration
 2. Implement custom alerting rules
 3. Scale the stack for production
 4. Add security and authentication
+5. Create custom dashboards from scratch
 
 ## 📚 Additional Resources
 
 - [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
 - [Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/)
 - [Grafana Documentation](https://grafana.com/docs/)
+- [Grafana Dashboard Library](https://grafana.com/grafana/dashboards/)
 - [Tempo Documentation](https://grafana.com/docs/tempo/)
 - [Loki Documentation](https://grafana.com/docs/loki/)
 
