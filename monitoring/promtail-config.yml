@@ -25,10 +25,14 @@ scrape_configs:
             time: time
             level: attrs.level
             msg: log
+            trace_id: trace_id
+            span_id: span_id
       - labels:
           stream:
           tag:
           level:
+          trace_id:
+          span_id:
       - timestamp:
           source: time
           format: RFC3339Nano
