@@ -89,17 +89,17 @@ receivers:
         - job_name: 'ad-service'
           scrape_interval: 10s
           static_configs:
-            - targets: ['host.docker.internal:8180']
+            - targets: ['ad-service:8080']
           metrics_path: '/metrics'
         - job_name: 'analytics-service'
           scrape_interval: 10s
           static_configs:
-            - targets: ['host.docker.internal:3000']
+            - targets: ['analytics-service:3000']
           metrics_path: '/metrics'
         - job_name: 'bidding-service'
           scrape_interval: 10s
           static_configs:
-            - targets: ['host.docker.internal:3001']
+            - targets: ['bidding-service:3001']
           metrics_path: '/metrics'
 
 processors:
@@ -140,7 +140,7 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch, attributes]
-      exporters: [debug]
+      exporters: [debug] 
 ```
 
 ## Step 3: Create Tempo Configuration

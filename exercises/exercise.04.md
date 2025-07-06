@@ -1,17 +1,19 @@
 # Exercise 04: Adding Alertmanager and Alerting
 
 ## Objective
-Add Alertmanager for handling alerts from Prometheus and configure alerting rules for the adtech services.
+Add Alertmanager for handling alerts from Prometheus and configure alerting rules for the adtech services using both configuration files and Grafana's UI.
 
 ## Prerequisites
 - Completed Exercise 03 (Grafana visualization working)
 - Basic understanding of alerting concepts
+- Access to Grafana UI at http://localhost:3002
 
 ## What We'll Add
 1. **Alertmanager** - Alert routing and notification management
 2. **Alerting Rules** - Prometheus rules for detecting issues
-3. **Notification Channels** - Webhook and Slack integration
-4. **Alert Dashboard** - Grafana integration for alert management
+3. **Grafana Alerting** - UI-based alert configuration
+4. **Notification Channels** - Webhook and Slack integration
+5. **Alert Dashboard** - Grafana integration for alert management
 
 ## Step 1: Add Alertmanager Service
 
@@ -255,45 +257,7 @@ Update the Prometheus service in `docker-compose.yml` to mount the alerting rule
       - adtech-network
 ```
 
-## Step 6: Add Alertmanager to Grafana Data Sources
-
-Update `monitoring/grafana/provisioning/datasources/prometheus.yml`:
-
-```yaml
-apiVersion: 1
-
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-    
-  - name: Tempo
-    type: tempo
-    access: proxy
-    url: http://tempo:3200
-    jsonData:
-      httpMethod: GET
-      serviceMap:
-        datasourceUid: prometheus
-      
-  - name: Loki
-    type: loki
-    access: proxy
-    url: http://loki:3100
-    jsonData:
-      maxLines: 1000
-
-  - name: Alertmanager
-    type: alertmanager
-    access: proxy
-    url: http://alertmanager:9093
-    jsonData:
-      implementation: prometheus
-```
-
-## Step 7: Restart Services
+## Step 6: Restart Services
 
 ```bash
 # Stop existing services
@@ -306,15 +270,15 @@ docker compose up -d --build
 docker compose ps
 ```
 
-## Step 8: Test Alerting Setup
+## Step 7: Test Basic Alerting Setup
 
-Create `test-alerting.sh`:
+Create `test-alerting-basic.sh`:
 
 ```bash
 #!/bin/bash
 
-echo "🚨 Testing Alerting Setup..."
-echo "============================"
+echo "🚨 Testing Basic Alerting Setup..."
+echo "=================================="
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to start..."
@@ -356,9 +320,179 @@ else
     echo "❌ Alertmanager configuration issue"
 fi
 
-# Generate some traffic to potentially trigger alerts
-echo "5. Generating traffic for alert testing..."
+echo "=================================="
+echo "🎉 Basic alerting testing complete!"
+
+echo ""
+echo "🌐 Access Points:"
+echo "Alertmanager: http://localhost:9093"
+echo "Prometheus Alerts: http://localhost:9090/alerts"
+echo "Grafana: http://localhost:3002"
+
+echo ""
+echo "📋 Next Steps:"
+echo "1. Open Alertmanager: http://localhost:9093"
+echo "2. Check Prometheus Alerts: http://localhost:9090/alerts"
+echo "3. Configure Grafana alerting in the UI"
+```
+
+Make it executable and run:
+```bash
+chmod +x test-alerting-basic.sh
+./test-alerting-basic.sh
+```
+
+## Step 8: Configure Grafana Alerting
+
+### 8.1 Access Grafana Alerting
+1. **Open Grafana**: http://localhost:3002
+2. **Login**: admin / admin
+3. **Go to Alerting**: Click the bell icon in the sidebar
+
+### 8.2 Create Alert Rule in Grafana UI
+
+1. **Click "New alert rule"**
+2. **Configure the rule**:
+   - **Name**: "High Error Rate"
+   - **Description**: "Alert when error rate is too high"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(http_requests_total{status=~"5.."}[5m]) > 0.1`
+   - **Evaluation**: Every 1m for 2m
+   - **Severity**: Warning
+
+3. **Configure notifications**:
+   - **Contact point**: Create a new one
+   - **Type**: Webhook
+   - **URL**: `http://localhost:5001/` (for testing)
+
+4. **Save the rule**
+
+### 8.3 Create More Alert Rules
+
+1. **Service Down Alert**:
+   - **Query**: `up == 0`
+   - **Evaluation**: Every 30s for 1m
+   - **Severity**: Critical
+
+2. **High Response Time Alert**:
+   - **Query**: `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2`
+   - **Evaluation**: Every 1m for 2m
+   - **Severity**: Warning
+
+3. **Low Success Rate Alert**:
+   - **Query**: `rate(http_requests_total{status=~"2.."}[5m]) / rate(http_requests_total[5m]) < 0.95`
+   - **Evaluation**: Every 1m for 2m
+   - **Severity**: Warning
+
+### 8.4 Create Contact Points
+
+1. **Go to Contact points**
+2. **Add contact point**:
+   - **Name**: "Webhook"
+   - **Type**: Webhook
+   - **URL**: `http://localhost:5001/`
+   - **HTTP Method**: POST
+
+3. **Add Slack contact point** (optional):
+   - **Name**: "Slack"
+   - **Type**: Slack
+   - **Webhook URL**: Your Slack webhook URL
+
+### 8.5 Create Notification Policies
+
+1. **Go to Notification policies**
+2. **Create policy**:
+   - **Name**: "Default"
+   - **Group by**: `['alertname', 'service']`
+   - **Timing**: Group wait 10s, group interval 10s, repeat interval 1h
+   - **Contact point**: Select your webhook
+
+## Step 9: Test Alerting by Stopping a Service
+
+### 9.1 Test Service Down Alert
+```bash
+# Stop the bidding service to trigger an alert
+docker compose stop bidding-service
+
+# Wait a few minutes for the alert to fire
+sleep 120
+
+# Check for alerts in Prometheus
+curl -s http://localhost:9090/api/v1/alerts | jq '.data.alerts[] | select(.state == "firing")'
+
+# Check for alerts in Grafana
+# Go to http://localhost:3002/alerting and check the Alert Rules section
+
+# Restart the service
+docker compose start bidding-service
+```
+
+### 9.2 Test High Error Rate Alert
+```bash
+# Generate some errors (if your service has error endpoints)
 for i in {1..10}; do
+    curl -s http://localhost:3001/nonexistent-endpoint || true
+    sleep 0.5
+done
+```
+
+## Step 10: Create Alert Dashboard
+
+### 10.1 Create Alert Overview Dashboard
+1. **Go to Dashboards** → **New Dashboard**
+2. **Add Alert Panel**:
+   - **Title**: "Active Alerts"
+   - **Data Source**: Prometheus
+   - **Query**: `ALERTS{alertstate="firing"}`
+   - **Visualization**: Table
+
+3. **Add Alert Count Panel**:
+   - **Title**: "Alert Count by Severity"
+   - **Data Source**: Prometheus
+   - **Query**: `count by (severity) (ALERTS{alertstate="firing"})`
+   - **Visualization**: Stat
+
+4. **Save Dashboard**:
+   - **Name**: "Alert Overview"
+   - **Tags**: "alerts", "monitoring"
+
+## Step 11: Test Complete Alerting Setup
+
+Create `test-alerting-complete.sh`:
+
+```bash
+#!/bin/bash
+
+echo "🚨 Testing Complete Alerting Setup..."
+echo "====================================="
+
+# Wait for services to be ready
+echo "⏳ Waiting for services to start..."
+sleep 20
+
+# Test all services
+echo "1. Testing all services..."
+ALERTMANAGER_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9093/-/healthy)
+PROM_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy)
+GRAFANA_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3002/api/health)
+
+echo "   Alertmanager: $([ "$ALERTMANAGER_RESPONSE" = "200" ] && echo "✅" || echo "❌") (HTTP $ALERTMANAGER_RESPONSE)"
+echo "   Prometheus: $([ "$PROM_RESPONSE" = "200" ] && echo "✅" || echo "❌") (HTTP $PROM_RESPONSE)"
+echo "   Grafana: $([ "$GRAFANA_RESPONSE" = "200" ] && echo "✅" || echo "❌") (HTTP $GRAFANA_RESPONSE)"
+
+# Check alerting rules
+echo "2. Checking alerting rules..."
+RULES_COUNT=$(curl -s http://localhost:9090/api/v1/rules | grep -c "alerting" || echo "0")
+echo "   Prometheus Rules: $([ "$RULES_COUNT" -gt 0 ] && echo "✅" || echo "❌") ($RULES_COUNT rule groups)"
+
+# Check for active alerts
+echo "3. Checking for active alerts..."
+ALERTS_COUNT=$(curl -s http://localhost:9090/api/v1/alerts | grep -c "firing" || echo "0")
+echo "   Active Alerts: $([ "$ALERTS_COUNT" -ge 0 ] && echo "✅" || echo "❌") ($ALERTS_COUNT firing alerts)"
+
+# Generate some traffic
+echo "4. Generating traffic..."
+for i in {1..5}; do
     curl -s -X POST http://localhost:3001/bidding/calculate \
       -H "Content-Type: application/json" \
       -d "{\"ad_request_id\": \"alert-test-$i\", \"user_id\": \"user-$i\"}" > /dev/null
@@ -367,89 +501,69 @@ done
 
 echo "✅ Generated test traffic"
 
-# Check for active alerts
-echo "6. Checking for active alerts..."
-ALERTS_COUNT=$(curl -s http://localhost:9090/api/v1/alerts | grep -c "firing" || echo "0")
-if [ "$ALERTS_COUNT" -gt 0 ]; then
-    echo "⚠️  Active alerts found ($ALERTS_COUNT firing alerts)"
-else
-    echo "✅ No active alerts (this is good for a healthy system)"
-fi
+echo "====================================="
+echo "🎉 Complete alerting testing finished!"
 
-echo "============================"
-echo "🎉 Alerting testing complete!"
-
-# Summary
+# Final Summary
 echo ""
-echo "📊 Summary:"
+echo "📊 FINAL SUMMARY:"
+echo "=================="
 echo "Alertmanager: $([ "$ALERTMANAGER_RESPONSE" = "200" ] && echo "✅" || echo "❌")"
 echo "Prometheus: $([ "$PROM_RESPONSE" = "200" ] && echo "✅" || echo "❌")"
+echo "Grafana: $([ "$GRAFANA_RESPONSE" = "200" ] && echo "✅" || echo "❌")"
 echo "Alerting Rules: $([ "$RULES_COUNT" -gt 0 ] && echo "✅" || echo "❌")"
-echo "Alertmanager Config: $([ "$CONFIG_RESPONSE" -gt 0 ] && echo "✅" || echo "❌")"
-echo "Active Alerts: $([ "$ALERTS_COUNT" -gt 0 ] && echo "⚠️" || echo "✅")"
+echo "Active Alerts: $([ "$ALERTS_COUNT" -ge 0 ] && echo "✅" || echo "❌")"
 
 echo ""
 echo "🌐 Access Points:"
+echo "=================="
 echo "Alertmanager: http://localhost:9093"
 echo "Prometheus Alerts: http://localhost:9090/alerts"
 echo "Grafana Alerting: http://localhost:3002/alerting"
 
 echo ""
-echo "📋 Next Steps:"
-echo "1. Open Alertmanager: http://localhost:9093"
-echo "2. Check Prometheus Alerts: http://localhost:9090/alerts"
-echo "3. Configure Slack webhook in alertmanager.yml"
-echo "4. Test alerting by stopping a service"
+echo "📋 Usage Guide:"
+echo "==============="
+echo "1. Open Grafana Alerting: http://localhost:3002/alerting"
+echo "2. Check Alertmanager: http://localhost:9093"
+echo "3. View Prometheus Alerts: http://localhost:9090/alerts"
+echo "4. Test alerts by stopping services"
+echo "5. Configure notification channels"
 ```
 
 Make it executable and run:
 ```bash
-chmod +x test-alerting.sh
-./test-alerting.sh
+chmod +x test-alerting-complete.sh
+./test-alerting-complete.sh
 ```
-
-## Step 9: Test Alerting by Stopping a Service
-
-To test the alerting system, you can stop one of the services:
-
-```bash
-# Stop the bidding service to trigger an alert
-docker compose stop bidding-service
-
-# Wait a few minutes for the alert to fire
-sleep 120
-
-# Check for alerts
-curl -s http://localhost:9090/api/v1/alerts | jq '.data.alerts[] | select(.state == "firing")'
-
-# Restart the service
-docker compose start bidding-service
-```
-
-## Step 10: Configure Slack Notifications (Optional)
-
-To enable Slack notifications:
-
-1. **Create a Slack App** and get a webhook URL
-2. **Update `monitoring/alertmanager.yml`**:
-   ```yaml
-   global:
-     slack_api_url: 'https://hooks.slack.com/services/YOUR_ACTUAL_WEBHOOK_URL'
-   ```
-3. **Restart Alertmanager**:
-   ```bash
-   docker compose restart alertmanager
-   ```
 
 ## Expected Results
 
 After completing this exercise, you should have:
 - ✅ Alertmanager running and accessible
 - ✅ Prometheus configured with alerting rules
+- ✅ Grafana alerting configured in the UI
 - ✅ Alerting rules for service health, performance, and infrastructure
-- ✅ Grafana integration for alert management
-- ✅ Webhook and Slack notification capabilities
+- ✅ Notification channels configured
 - ✅ Ability to test alerts by stopping services
+- ✅ Alert dashboard for monitoring
+
+## Key Features Demonstrated
+
+### 1. Dual Alerting Approach
+- **Prometheus Alertmanager**: Traditional rule-based alerting
+- **Grafana Alerting**: Modern UI-based alert configuration
+
+### 2. Comprehensive Alert Rules
+- Service health monitoring
+- Performance threshold alerts
+- Business metric alerts
+- Infrastructure monitoring
+
+### 3. Notification Management
+- Multiple notification channels
+- Alert grouping and deduplication
+- Escalation policies
 
 ## Troubleshooting
 

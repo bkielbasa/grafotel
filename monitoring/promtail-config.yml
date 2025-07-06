@@ -25,8 +25,20 @@ scrape_configs:
             time: time
             level: attrs.level
             msg: log
+      - json:
+          expressions:
+            level: level
+            timestamp: timestamp
+            caller: caller
+            message: message
+            user_id: user_id
+            ad_type: ad_type
+            ad_id: ad_id
+            bid_amount: bid_amount
+            duration_seconds: duration_seconds
             trace_id: trace_id
             span_id: span_id
+          source: msg
       - labels:
           stream:
           tag:
@@ -34,7 +46,10 @@ scrape_configs:
           trace_id:
           span_id:
       - timestamp:
-          source: time
-          format: RFC3339Nano
+          source: timestamp
+          format: RFC3339
+      - template:
+          source: '{{.message}} Trace: {{.trace_id}} Span: {{.span_id}}'
+          template: '{{.message}} Trace: {{.trace_id}} Span: {{.span_id}}'
       - output:
-          source: msg 
+          source: template 

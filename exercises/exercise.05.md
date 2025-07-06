@@ -1,19 +1,22 @@
 # Exercise 05: Complete Observability Stack
 
 ## Objective
-Finalize the complete observability stack and create comprehensive dashboards for the adtech services.
+Finalize the complete observability stack and create comprehensive dashboards for the adtech services using Grafana's UI, with special focus on trace linking and alerting integration.
 
 ## Prerequisites
 - Completed Exercises 01-04
 - All services running and healthy
 - Basic understanding of the observability stack
+- Access to Grafana UI at http://localhost:3002
 
 ## What We'll Accomplish
 1. **Final Integration** - Ensure all components work together
-2. **Comprehensive Dashboards** - Create detailed visualizations
-3. **End-to-End Testing** - Test the complete observability pipeline
-4. **Best Practices** - Implement monitoring best practices
-5. **Documentation** - Create usage documentation
+2. **Comprehensive Dashboards** - Create detailed visualizations in Grafana UI
+3. **Trace Linking** - Verify and enhance trace correlation
+4. **Alert Integration** - Connect dashboards with alerting
+5. **End-to-End Testing** - Test the complete observability pipeline
+6. **Best Practices** - Implement monitoring best practices
+7. **Documentation** - Create usage documentation
 
 ## Step 1: Verify Complete Stack
 
@@ -139,11 +142,11 @@ echo ""
 echo "📋 Usage Guide:"
 echo "==============="
 echo "1. Open Grafana: http://localhost:3002"
-echo "2. Go to Explore to query metrics, traces, and logs"
-echo "3. Check Alerting section for alert management"
-echo "4. Use Prometheus for advanced metric queries"
-echo "5. Use Tempo for distributed tracing analysis"
-echo "6. Use Loki for log analysis and correlation"
+echo "2. Go to Dashboards to see your created dashboards"
+echo "3. Check the logs dashboard for trace links"
+echo "4. Click on trace IDs to open traces in Tempo"
+echo "5. Use Explore to query metrics, traces, and logs"
+echo "6. Check Alerting section for alert management"
 ```
 
 Make it executable and run:
@@ -152,165 +155,249 @@ chmod +x test-complete-stack.sh
 ./test-complete-stack.sh
 ```
 
-## Step 3: Create Comprehensive Dashboards
+## Step 3: Create Comprehensive Dashboards in Grafana UI
 
-### Create Service Overview Dashboard
+### 3.1 Access Grafana
+1. **Open Grafana**: http://localhost:3002
+2. **Login**: admin / admin
+3. **Verify all data sources** are working
 
-Create `monitoring/grafana/dashboards/service-overview.json`:
+### 3.2 Create Service Overview Dashboard
 
-```json
-{
-  "dashboard": {
-    "id": null,
-    "title": "AdTech Services Overview",
-    "tags": ["adtech", "overview"],
-    "timezone": "browser",
-    "panels": [
-      {
-        "id": 1,
-        "title": "Service Health Status",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "up",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {"color": "red", "value": 0},
-                {"color": "green", "value": 1}
-              ]
-            },
-            "mappings": [
-              {"options": {"0": {"text": "Down"}}, "type": "value"},
-              {"options": {"1": {"text": "Up"}}, "type": "value"}
-            ]
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
-      },
-      {
-        "id": 2,
-        "title": "Request Rate by Service",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total[5m])",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {"mode": "palette-classic"},
-            "custom": {
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "drawStyle": "line",
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "hideFrom": {"legend": false, "tooltip": false, "vis": false},
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {"type": "linear"},
-              "showPoints": "never",
-              "spanNulls": false,
-              "stacking": {"group": "A", "mode": "none"},
-              "thresholdsStyle": {"mode": "off"}
-            },
-            "unit": "reqps"
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
-      },
-      {
-        "id": 3,
-        "title": "Response Time (95th percentile)",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {"mode": "palette-classic"},
-            "custom": {
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "drawStyle": "line",
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "hideFrom": {"legend": false, "tooltip": false, "vis": false},
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {"type": "linear"},
-              "showPoints": "never",
-              "spanNulls": false,
-              "stacking": {"group": "A", "mode": "none"},
-              "thresholdsStyle": {"mode": "off"}
-            },
-            "unit": "s"
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
-      },
-      {
-        "id": 4,
-        "title": "Error Rate",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total{status=~\"5..\"}[5m])",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {"mode": "palette-classic"},
-            "custom": {
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "drawStyle": "line",
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "hideFrom": {"legend": false, "tooltip": false, "vis": false},
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {"type": "linear"},
-              "showPoints": "never",
-              "spanNulls": false,
-              "stacking": {"group": "A", "mode": "none"},
-              "thresholdsStyle": {"mode": "off"}
-            },
-            "unit": "reqps"
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
-      }
-    ],
-    "time": {
-      "from": "now-1h",
-      "to": "now"
-    },
-    "refresh": "5s"
-  }
-}
+1. **Go to Dashboards** → **New Dashboard**
+2. **Add Service Health Panel**:
+   - **Title**: "Service Health Status"
+   - **Data Source**: Prometheus
+   - **Query**: `up`
+   - **Visualization**: Stat
+   - **Field**: Configure thresholds and mappings
+
+3. **Add Request Rate Panel**:
+   - **Title**: "Request Rate by Service"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(http_requests_total[5m])`
+   - **Visualization**: Time series
+   - **Y-axis**: Unit = "reqps"
+
+4. **Add Response Time Panel**:
+   - **Title**: "Response Time (95th percentile)"
+   - **Data Source**: Prometheus
+   - **Query**: `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))`
+   - **Visualization**: Time series
+   - **Y-axis**: Unit = "s"
+
+5. **Add Error Rate Panel**:
+   - **Title**: "Error Rate"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(http_requests_total{status=~"5.."}[5m])`
+   - **Visualization**: Time series
+   - **Y-axis**: Unit = "reqps"
+
+6. **Add Success Rate Panel**:
+   - **Title**: "Success Rate"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(http_requests_total{status=~"2.."}[5m]) / rate(http_requests_total[5m])`
+   - **Visualization**: Time series
+   - **Y-axis**: Unit = "percentunit"
+
+7. **Save Dashboard**:
+   - **Name**: "AdTech Services Overview"
+   - **Tags**: "adtech", "overview", "services"
+   - **Time Range**: Last 1 hour
+   - **Refresh**: 5s
+
+### 3.3 Create Bidding Service Dashboard
+
+1. **Create New Dashboard**
+2. **Add Bidding Request Rate Panel**:
+   - **Title**: "Bidding Request Rate"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(bidding_requests_total[5m])`
+   - **Visualization**: Time series
+
+3. **Add Bidding Success Rate Panel**:
+   - **Title**: "Bidding Success Rate"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(bidding_success_total[5m]) / rate(bidding_requests_total[5m])`
+   - **Visualization**: Time series
+
+4. **Add Bidding Latency Panel**:
+   - **Title**: "Bidding Latency"
+   - **Data Source**: Prometheus
+   - **Query**: `histogram_quantile(0.95, rate(bidding_request_duration_seconds_bucket[5m]))`
+   - **Visualization**: Time series
+
+5. **Add Bid Amount Distribution Panel**:
+   - **Title**: "Bid Amount Distribution"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(bid_amount_bucket[5m])`
+   - **Visualization**: Heatmap
+
+6. **Save Dashboard**:
+   - **Name**: "Bidding Service Metrics"
+   - **Tags**: "adtech", "bidding", "business"
+
+### 3.4 Create Logs Dashboard with Trace Links
+
+1. **Create New Dashboard**
+2. **Add Main Logs Panel**:
+   - **Title**: "Application Logs with Trace Links"
+   - **Data Source**: Loki
+   - **Query**: `{tag="grafotel-$service-1"} |= `` | json | line_format `{{.message}} Trace: {{.trace_id}} Span: {{.span_id}}``
+   - **Visualization**: Logs
+   - **Options**: Enable "Show time", "Show labels"
+
+3. **Add Error Logs Panel**:
+   - **Title**: "Error Logs"
+   - **Data Source**: Loki
+   - **Query**: `{tag="grafotel-$service-1"} |= "error" | json`
+   - **Visualization**: Logs
+
+4. **Add Trace Logs Panel**:
+   - **Title**: "Logs with Trace IDs"
+   - **Data Source**: Loki
+   - **Query**: `{tag="grafotel-$service-1"} |= "trace_id" | json | line_format `{{.message}} Trace: {{.trace_id}} Span: {{.span_id}}``
+   - **Visualization**: Logs
+
+5. **Save Dashboard**:
+   - **Name**: "Application Logs with Trace Links"
+   - **Tags**: "adtech", "logs", "traces"
+
+### 3.5 Create Infrastructure Dashboard
+
+1. **Create New Dashboard**
+2. **Add CPU Usage Panel**:
+   - **Title**: "CPU Usage"
+   - **Data Source**: Prometheus
+   - **Query**: `100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)`
+   - **Visualization**: Time series
+
+3. **Add Memory Usage Panel**:
+   - **Title**: "Memory Usage"
+   - **Data Source**: Prometheus
+   - **Query**: `(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100`
+   - **Visualization**: Time series
+
+4. **Add Disk Usage Panel**:
+   - **Title**: "Disk Usage"
+   - **Data Source**: Prometheus
+   - **Query**: `(node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100`
+   - **Visualization**: Time series
+
+5. **Add Network Traffic Panel**:
+   - **Title**: "Network Traffic"
+   - **Data Source**: Prometheus
+   - **Query**: `rate(node_network_receive_bytes_total[5m])`
+   - **Visualization**: Time series
+
+6. **Save Dashboard**:
+   - **Name**: "Infrastructure Monitoring"
+   - **Tags**: "infrastructure", "system"
+
+### 3.6 Create Alert Overview Dashboard
+
+1. **Create New Dashboard**
+2. **Add Active Alerts Panel**:
+   - **Title**: "Active Alerts"
+   - **Data Source**: Prometheus
+   - **Query**: `ALERTS{alertstate="firing"}`
+   - **Visualization**: Table
+
+3. **Add Alert Count by Severity Panel**:
+   - **Title**: "Alert Count by Severity"
+   - **Data Source**: Prometheus
+   - **Query**: `count by (severity) (ALERTS{alertstate="firing"})`
+   - **Visualization**: Stat
+
+4. **Add Alert History Panel**:
+   - **Title**: "Alert History"
+   - **Data Source**: Prometheus
+   - **Query**: `changes(ALERTS[1h])`
+   - **Visualization**: Time series
+
+5. **Save Dashboard**:
+   - **Name**: "Alert Overview"
+   - **Tags**: "alerts", "monitoring"
+
+## Step 4: Test Trace Linking
+
+### 4.1 Generate Traffic with Trace IDs
+```bash
+# Generate various types of traffic
+for i in {1..10}; do
+    curl -X POST http://localhost:3001/bidding/calculate \
+      -H "Content-Type: application/json" \
+      -d "{\"ad_request_id\": \"trace-test-$i\", \"user_id\": \"user-$i\"}"
+    sleep 0.5
+done
 ```
 
-## Step 4: Create Usage Documentation
+### 4.2 Verify Trace Links
+1. **Open the Logs Dashboard** in Grafana
+2. **Look for logs** with "Trace:" in the message
+3. **Click on trace IDs** to open traces in Tempo
+4. **Verify trace correlation** between logs and traces
+
+## Step 5: Create Dashboard Variables
+
+### 5.1 Add Service Variable
+1. **Go to Dashboard Settings** (gear icon)
+2. **Click Variables**
+3. **Add New Variable**:
+   - **Name**: service
+   - **Type**: Query
+   - **Data Source**: Prometheus
+   - **Query**: `label_values(http_requests_total, service)`
+   - **Refresh**: On Dashboard Load
+
+### 5.2 Add Time Range Variable
+1. **Add another variable**:
+   - **Name**: time_range
+   - **Type**: Custom
+   - **Values**: 5m, 15m, 1h, 6h, 1d
+   - **Default**: 1h
+
+### 5.3 Use Variables in Queries
+Update dashboard queries to use variables:
+- `rate(http_requests_total{service="$service"}[$time_range])`
+- `{tag="grafotel-$service-1"}`
+
+## Step 6: Organize Dashboards
+
+### 6.1 Create Folders
+1. **Go to Dashboards**
+2. **Click New Folder**
+3. **Create folders**:
+   - "AdTech Services"
+   - "Infrastructure"
+   - "Logs and Traces"
+   - "Alerts"
+
+### 6.2 Move Dashboards to Folders
+1. **Select each dashboard**
+2. **Click the three dots** (⋮)
+3. **Click Move**
+4. **Select the appropriate folder**
+
+### 6.3 Add Dashboard Links
+1. **Go to Dashboard Settings**
+2. **Click Links**
+3. **Add links** to related dashboards and external tools
+
+## Step 7: Export Dashboards
+
+### 7.1 Export All Dashboards
+1. **Open each dashboard**
+2. **Go to Settings** → **JSON Model**
+3. **Copy the JSON content**
+4. **Save to files**:
+   - `monitoring/grafana/dashboards/service-overview.json`
+   - `monitoring/grafana/dashboards/bidding-service.json`
+   - `monitoring/grafana/dashboards/logs.json`
+   - `monitoring/grafana/dashboards/infrastructure.json`
+   - `monitoring/grafana/dashboards/alert-overview.json`
+
+## Step 8: Create Usage Documentation
 
 Create `exercises/USAGE_GUIDE.md`:
 
@@ -363,6 +450,7 @@ curl -X POST http://localhost:3001/bidding/calculate \
   - Service dependency mapping
   - Request flow visualization
   - Performance bottleneck identification
+  - Trace linking from logs
 
 ### 3. Logs (Loki)
 - **URL**: http://localhost:3100
@@ -371,14 +459,17 @@ curl -X POST http://localhost:3001/bidding/calculate \
   - Structured log search
   - Log correlation with traces
   - Real-time log streaming
+  - Clickable trace links
 
-### 4. Alerts (Alertmanager)
-- **URL**: http://localhost:9093
+### 4. Alerts (Alertmanager + Grafana)
+- **URL**: http://localhost:9093 (Alertmanager)
+- **URL**: http://localhost:3002/alerting (Grafana)
 - **Purpose**: Alert management and routing
 - **Key Features**:
   - Alert grouping and deduplication
   - Notification routing
   - Alert silencing
+  - UI-based alert configuration
 
 ## Grafana Usage
 
@@ -391,11 +482,18 @@ curl -X POST http://localhost:3001/bidding/calculate \
 1. Go to **Dashboards** → **New Dashboard**
 2. Add panels for different metrics
 3. Configure queries and visualizations
+4. Use variables for flexibility
 
 ### 3. Set Up Alerts
 1. Go to **Alerting** → **Alert Rules**
 2. Create new alert rules
 3. Configure notification channels
+
+### 4. Trace Linking
+1. View logs in dashboard panels
+2. Look for "Trace:" in log messages
+3. Click trace IDs to open traces in Tempo
+4. Correlate logs with trace data
 
 ## Common Queries
 
@@ -412,6 +510,9 @@ histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
 
 # Service health
 up
+
+# Bidding success rate
+rate(bidding_success_total[5m]) / rate(bidding_requests_total[5m])
 ```
 
 ### Loki Queries
@@ -424,6 +525,9 @@ up
 
 # Service-specific logs
 {container_name="grafotel-bidding-service-1"}
+
+# Logs with trace IDs
+{job="docker"} |= "Trace:"
 
 # Logs with specific text
 {job="docker"} |= "bidding"
@@ -439,6 +543,9 @@ up
 
 # Find traces by duration
 {duration > 1s}
+
+# Find traces by error
+{status="error"}
 ```
 
 ## Monitoring Best Practices
@@ -449,18 +556,29 @@ up
 - **Response Time**: `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))`
 - **Error Rate**: `rate(http_requests_total{status=~"5.."}[5m])`
 - **Success Rate**: `rate(http_requests_total{status=~"2.."}[5m]) / rate(http_requests_total[5m])`
+- **Business Metrics**: Bidding success rate, revenue per request
 
 ### 2. Alert Thresholds
 - **Service Down**: Immediate alert
 - **High Error Rate**: > 5% for 2 minutes
 - **High Response Time**: > 2s 95th percentile for 2 minutes
 - **Low Success Rate**: < 95% for 2 minutes
+- **Low Bidding Success**: < 60% for 2 minutes
 
 ### 3. Dashboard Organization
 - **Overview**: High-level service health
 - **Service-Specific**: Detailed metrics per service
 - **Infrastructure**: System resources
 - **Business**: Business metrics (bidding success, revenue)
+- **Logs and Traces**: Log analysis with trace correlation
+- **Alerts**: Alert management and history
+
+### 4. Trace Linking Best Practices
+- Always include trace IDs in structured logs
+- Use consistent trace ID format
+- Correlate logs with traces for debugging
+- Monitor trace sampling rates
+- Set up trace-based alerting for critical paths
 
 ## Troubleshooting
 
@@ -488,6 +606,17 @@ curl http://localhost:9090/api/v1/rules
 
 # Check Alertmanager
 curl http://localhost:9093/api/v1/status
+
+# Check Grafana alerting
+# Go to http://localhost:3002/alerting
+```
+
+### 4. Trace Links Not Working
+```bash
+# Check derived fields configuration
+# Verify log format contains "Trace:"
+# Test Tempo connectivity
+curl http://localhost:3200/ready
 ```
 
 ## Performance Tuning
@@ -513,19 +642,28 @@ curl http://localhost:9093/api/v1/status
 - Enable authentication for all services
 - Use HTTPS for all endpoints
 - Implement proper access controls
+- Secure API keys and credentials
 
 ### 2. Scalability
 - Use external storage (S3, GCS) for long-term retention
 - Implement horizontal scaling
 - Use load balancers for high availability
+- Consider managed services (Grafana Cloud, etc.)
 
 ### 3. Backup and Recovery
 - Regular backups of configuration
 - Test recovery procedures
 - Document disaster recovery plans
+- Version control all configurations
+
+### 4. Monitoring the Monitoring
+- Monitor the observability stack itself
+- Set up alerts for monitoring components
+- Track resource usage of monitoring tools
+- Regular health checks of all components
 ```
 
-## Step 5: Final Verification
+## Step 9: Final Verification
 
 Run the complete test script and verify everything is working:
 
@@ -539,8 +677,11 @@ After completing this exercise, you should have:
 - ✅ Complete observability stack running
 - ✅ All services healthy and communicating
 - ✅ Metrics, traces, and logs being collected
+- ✅ Trace linking working in logs
 - ✅ Alerting system configured and working
-- ✅ Comprehensive dashboards available
+- ✅ Comprehensive dashboards created in UI
+- ✅ Dashboard variables for flexibility
+- ✅ Organized dashboard structure
 - ✅ Complete documentation for usage
 
 ## Congratulations! 🎉
@@ -550,18 +691,46 @@ You have successfully built a complete observability stack for adtech services w
 - **OpenTelemetry** instrumentation
 - **Prometheus** metrics collection
 - **Tempo** distributed tracing
-- **Loki** log aggregation
-- **Grafana** visualization
-- **Alertmanager** alerting
+- **Loki** log aggregation with trace linking
+- **Grafana** visualization with UI-first approach
+- **Alertmanager** + **Grafana Alerting** for comprehensive alerting
+- **Trace linking** from logs to traces
 - **Comprehensive monitoring** and alerting rules
+
+## Key Features Demonstrated
+
+### 1. Complete Observability
+- **Metrics**: Performance and business metrics
+- **Traces**: Distributed tracing with correlation
+- **Logs**: Structured logging with trace links
+- **Alerts**: Multi-channel alerting
+
+### 2. UI-First Approach
+- Create dashboards using Grafana's intuitive interface
+- Configure alerts through the UI
+- Export configurations for version control
+- Organize with folders and tags
+
+### 3. Trace Correlation
+- Clickable trace links in logs
+- Seamless navigation between logs and traces
+- End-to-end request tracking
+- Performance bottleneck identification
+
+### 4. Production-Ready Features
+- Comprehensive alerting rules
+- Multiple notification channels
+- Dashboard variables for flexibility
+- Organized dashboard structure
 
 ## Next Steps
 
 1. **Explore the dashboards** in Grafana
-2. **Test the alerting** by stopping services
-3. **Customize the configuration** for your needs
-4. **Add more services** following the same pattern
-5. **Scale the stack** for production use
+2. **Test the trace linking** by clicking trace IDs
+3. **Test the alerting** by stopping services
+4. **Customize the configuration** for your needs
+5. **Add more services** following the same pattern
+6. **Scale the stack** for production use
 
 ## Cleanup
 

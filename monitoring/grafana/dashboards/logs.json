@@ -19,7 +19,20 @@
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
     "id": 3,
-    "links": [],
+    "links": [
+      {
+        "asDropdown": false,
+        "icon": "external link",
+        "includeVars": false,
+        "keepTime": false,
+        "tags": [],
+        "targetBlank": true,
+        "title": "Open Tempo",
+        "tooltip": "Open Tempo UI in new tab",
+        "type": "link",
+        "url": "http://localhost:3200"
+      }
+    ],
     "panels": [
       {
         "datasource": {
@@ -27,7 +40,11 @@
           "uid": "P8E80F9AEF21F6940"
         },
         "fieldConfig": {
-          "defaults": {},
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          },
           "overrides": []
         },
         "gridPos": {
@@ -43,10 +60,10 @@
           "enableLogDetails": true,
           "prettifyLogMessage": false,
           "showCommonLabels": false,
-          "showLabels": false,
-          "showTime": false,
+          "showLabels": true,
+          "showTime": true,
           "sortOrder": "Descending",
-          "wrapLogMessage": false
+          "wrapLogMessage": true
         },
         "pluginVersion": "12.0.2",
         "targets": [
@@ -57,12 +74,110 @@
             },
             "direction": "backward",
             "editorMode": "code",
-            "expr": "{tag=\"grafotel-$service-1\"} |= ``",
+            "expr": "{tag=\"grafotel-$service-1\"} |= `` | json | line_format `{{.message}} Trace: {{.trace_id}} Span: {{.span_id}}`",
             "queryType": "range",
             "refId": "A"
           }
         ],
-        "title": "Logs",
+        "title": "Application Logs with Trace Links",
+        "transparent": true,
+        "type": "logs"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 15,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        },
+        "id": 2,
+        "options": {
+          "dedupStrategy": "none",
+          "enableInfiniteScrolling": false,
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showCommonLabels": false,
+          "showLabels": true,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "pluginVersion": "12.0.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "direction": "backward",
+            "editorMode": "code",
+            "expr": "{tag=\"grafotel-$service-1\"} |= `error` | json",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Error Logs",
+        "transparent": true,
+        "type": "logs"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list"
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 15,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        },
+        "id": 3,
+        "options": {
+          "dedupStrategy": "none",
+          "enableInfiniteScrolling": false,
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showCommonLabels": false,
+          "showLabels": true,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "pluginVersion": "12.0.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "direction": "backward",
+            "editorMode": "code",
+            "expr": "{tag=\"grafotel-$service-1\"} |= `trace_id` | json | line_format `{{.message}} Trace: {{.trace_id}} Span: {{.span_id}}`",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Logs with Trace IDs",
         "transparent": true,
         "type": "logs"
       }
@@ -74,8 +189,8 @@
       "list": [
         {
           "current": {
-            "text": "bidding-service",
-            "value": "bidding-service"
+            "text": "ad-service",
+            "value": "ad-service"
           },
           "datasource": {
             "type": "tempo",
@@ -101,7 +216,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "Logs",
+    "title": "Application Logs with Trace Links",
     "uid": "261919b7-57c3-44e9-99a8-d170360dbc7c",
     "version": 1
   }
