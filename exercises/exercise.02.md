@@ -207,7 +207,7 @@ scrape_configs:
   # OpenTelemetry Collector (aggregates all service metrics)
   - job_name: 'otel-collector'
     static_configs:
-      - targets: ['host.docker.internal:9464']
+      - targets: ['otel-collector:9464']
     metrics_path: '/metrics'
     scrape_interval: 5s
 ```
