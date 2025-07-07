@@ -55,6 +55,8 @@ Add the following services to your `docker-compose.yml`:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
+    ports:
+      - "9080:9080"
     restart: unless-stopped
     networks:
       - adtech-network
